@@ -1,6 +1,14 @@
-import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
-import { supabase, Expense } from '../lib/supabase';
+import { useState, useEffect } from "react";
+import { X } from "lucide-react";
+
+interface Expense {
+  _id?: string;
+  id?: string;
+  amount: number;
+  category: string;
+  description?: string;
+  date: string;
+}
 
 interface EditExpenseModalProps {
   isOpen: boolean;
@@ -9,31 +17,39 @@ interface EditExpenseModalProps {
   expense: Expense | null;
 }
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 const CATEGORIES = [
-  'Food',
-  'Travel',
-  'Entertainment',
-  'Shopping',
-  'Bills',
-  'Healthcare',
-  'Education',
-  'Other'
+  "Food",
+  "Travel",
+  "Entertainment",
+  "Shopping",
+  "Bills",
+  "Healthcare",
+  "Education",
+  "Other",
 ];
 
-export default function EditExpenseModal({ isOpen, onClose, onSuccess, expense }: EditExpenseModalProps) {
-  const [amount, setAmount] = useState('');
+export default function EditExpenseModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  expense,
+}: EditExpenseModalProps) {
+  const [amount, setAmount] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
-  const [description, setDescription] = useState('');
-  const [date, setDate] = useState('');
+  const [description, setDescription] = useState("");
+  const [date, setDate] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
+  // preload expense values when modal opens
   useEffect(() => {
     if (expense) {
       setAmount(expense.amount.toString());
       setCategory(expense.category);
-      setDescription(expense.description || '');
-      setDate(expense.date);
+      setDescription(expense.description || "");
+      setDate(expense.date.split("T")[0] || "");
     }
   }, [expense]);
 
@@ -41,27 +57,39 @@ export default function EditExpenseModal({ isOpen, onClose, onSuccess, expense }
     e.preventDefault();
     if (!expense) return;
 
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
-      const { error: updateError } = await supabase
-        .from('expenses')
-        .update({
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("You must be logged in.");
+        setLoading(false);
+        return;
+      }
+
+      const id = expense._id || expense.id;
+      const res = await fetch(`${API_URL}/api/expenses/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
           amount: parseFloat(amount),
           category,
           description,
           date,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', expense.id);
+        }),
+      });
 
-      if (updateError) throw updateError;
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to update expense");
 
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to update expense');
+      setError(err.message || "Error updating expense");
     } finally {
       setLoading(false);
     }
@@ -83,12 +111,18 @@ export default function EditExpenseModal({ isOpen, onClose, onSuccess, expense }
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Amount Field */}
           <div>
-            <label htmlFor="edit-amount" className="block text-sm font-medium text-slate-700 mb-2">
+            <label
+              htmlFor="edit-amount"
+              className="block text-sm font-medium text-slate-700 mb-2"
+            >
               Amount
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600">$</span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600">
+                $
+              </span>
               <input
                 id="edit-amount"
                 type="number"
@@ -102,8 +136,12 @@ export default function EditExpenseModal({ isOpen, onClose, onSuccess, expense }
             </div>
           </div>
 
+          {/* Category Field */}
           <div>
-            <label htmlFor="edit-category" className="block text-sm font-medium text-slate-700 mb-2">
+            <label
+              htmlFor="edit-category"
+              className="block text-sm font-medium text-slate-700 mb-2"
+            >
               Category
             </label>
             <select
@@ -113,13 +151,19 @@ export default function EditExpenseModal({ isOpen, onClose, onSuccess, expense }
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             >
               {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
               ))}
             </select>
           </div>
 
+          {/* Date Field */}
           <div>
-            <label htmlFor="edit-date" className="block text-sm font-medium text-slate-700 mb-2">
+            <label
+              htmlFor="edit-date"
+              className="block text-sm font-medium text-slate-700 mb-2"
+            >
               Date
             </label>
             <input
@@ -132,8 +176,12 @@ export default function EditExpenseModal({ isOpen, onClose, onSuccess, expense }
             />
           </div>
 
+          {/* Description Field */}
           <div>
-            <label htmlFor="edit-description" className="block text-sm font-medium text-slate-700 mb-2">
+            <label
+              htmlFor="edit-description"
+              className="block text-sm font-medium text-slate-700 mb-2"
+            >
               Description
             </label>
             <textarea
@@ -165,7 +213,7 @@ export default function EditExpenseModal({ isOpen, onClose, onSuccess, expense }
               disabled={loading}
               className="flex-1 px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Updating...' : 'Update Expense'}
+              {loading ? "Updating..." : "Update Expense"}
             </button>
           </div>
         </form>

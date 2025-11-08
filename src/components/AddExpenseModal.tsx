@@ -1,7 +1,5 @@
-import { useState } from 'react';
-import { X } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { ExpenseInput } from '../lib/supabase';
+import { useState } from "react";
+import { X } from "lucide-react";
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -9,60 +7,74 @@ interface AddExpenseModalProps {
   onSuccess: () => void;
 }
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 const CATEGORIES = [
-  'Food',
-  'Travel',
-  'Entertainment',
-  'Shopping',
-  'Bills',
-  'Healthcare',
-  'Education',
-  'Other'
+  "Food",
+  "Travel",
+  "Entertainment",
+  "Shopping",
+  "Bills",
+  "Healthcare",
+  "Education",
+  "Other",
 ];
 
-export default function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpenseModalProps) {
-  const [amount, setAmount] = useState('');
+export default function AddExpenseModal({
+  isOpen,
+  onClose,
+  onSuccess,
+}: AddExpenseModalProps) {
+  const [amount, setAmount] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
-  const [description, setDescription] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [description, setDescription] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        setError('You must be logged in');
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("You must be logged in.");
+        setLoading(false);
         return;
       }
 
-      const expenseData: ExpenseInput & { user_id: string } = {
-        user_id: user.id,
-        amount: parseFloat(amount),
-        category,
-        description,
-        date
-      };
+      const res = await fetch(`${API_URL}/api/expenses`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          amount: parseFloat(amount),
+          category,
+          description,
+          date,
+        }),
+      });
 
-      const { error: insertError } = await supabase
-        .from('expenses')
-        .insert([expenseData]);
+      const data = await res.json();
 
-      if (insertError) throw insertError;
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to add expense");
+      }
 
-      setAmount('');
+      // Reset form fields
+      setAmount("");
       setCategory(CATEGORIES[0]);
-      setDescription('');
-      setDate(new Date().toISOString().split('T')[0]);
+      setDescription("");
+      setDate(new Date().toISOString().split("T")[0]);
+
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to add expense');
+      setError(err.message || "Error adding expense");
     } finally {
       setLoading(false);
     }
@@ -85,11 +97,16 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpen
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-slate-700 mb-2">
+            <label
+              htmlFor="amount"
+              className="block text-sm font-medium text-slate-700 mb-2"
+            >
               Amount
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600">$</span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600">
+                $
+              </span>
               <input
                 id="amount"
                 type="number"
@@ -105,7 +122,10 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpen
           </div>
 
           <div>
-            <label htmlFor="category" className="block text-sm font-medium text-slate-700 mb-2">
+            <label
+              htmlFor="category"
+              className="block text-sm font-medium text-slate-700 mb-2"
+            >
               Category
             </label>
             <select
@@ -115,13 +135,18 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpen
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             >
               {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label htmlFor="date" className="block text-sm font-medium text-slate-700 mb-2">
+            <label
+              htmlFor="date"
+              className="block text-sm font-medium text-slate-700 mb-2"
+            >
               Date
             </label>
             <input
@@ -135,7 +160,10 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpen
           </div>
 
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-2">
+            <label
+              htmlFor="description"
+              className="block text-sm font-medium text-slate-700 mb-2"
+            >
               Description
             </label>
             <textarea
@@ -167,7 +195,7 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpen
               disabled={loading}
               className="flex-1 px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Adding...' : 'Add Expense'}
+              {loading ? "Adding..." : "Add Expense"}
             </button>
           </div>
         </form>
