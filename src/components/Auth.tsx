@@ -21,7 +21,7 @@ export default function Auth() {
         : await signUp(email, password);
 
       if (error) {
-        setError(error.message);
+        setError(error);
       } else if (!isLogin) {
         setError('Account created! Please log in.');
         setIsLogin(true);
@@ -83,11 +83,10 @@ export default function Auth() {
             </div>
 
             {error && (
-              <div className={`p-4 rounded-lg text-sm ${
-                error.includes('created')
+              <div className={`p-4 rounded-lg text-sm ${error.includes('created')
                   ? 'bg-emerald-50 text-emerald-800'
                   : 'bg-red-50 text-red-800'
-              }`}>
+                }`}>
                 {error}
               </div>
             )}
